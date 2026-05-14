@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-hide-preview-pane"
+description = "Enables the hide_preview_pane command without any pre-configured scope."
+commands.allow = ["hide_preview_pane"]
+
+[[permission]]
+identifier = "deny-hide-preview-pane"
+description = "Denies the hide_preview_pane command without any pre-configured scope."
+commands.deny = ["hide_preview_pane"]

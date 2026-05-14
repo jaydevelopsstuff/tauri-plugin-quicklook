@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-set-preview-items-and-show"
+description = "Enables the set_preview_items_and_show command without any pre-configured scope."
+commands.allow = ["set_preview_items_and_show"]
+
+[[permission]]
+identifier = "deny-set-preview-items-and-show"
+description = "Denies the set_preview_items_and_show command without any pre-configured scope."
+commands.deny = ["set_preview_items_and_show"]

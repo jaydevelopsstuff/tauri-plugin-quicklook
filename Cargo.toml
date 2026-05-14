@@ -1,0 +1,18 @@
+[package]
+name = "tauri-plugin-quicklook"
+version = "0.1.0"
+authors = ["Justin Harrell"]
+description = ""
+edition = "2021"
+rust-version = "1.77.2"
+exclude = ["/examples", "/dist-js", "/guest-js", "/node_modules"]
+links = "tauri-plugin-quicklook"
+
+[dependencies]
+tauri = { version = "2.11.1" }
+serde = "1.0"
+thiserror = "2"
+quicklook = { path = "/Users/justinharrell/Documents/Coding/quicklook-rs/quicklook", features = ["serde"] }
+
+[build-dependencies]
+tauri-plugin = { version = "2.6.1", features = ["build"] }

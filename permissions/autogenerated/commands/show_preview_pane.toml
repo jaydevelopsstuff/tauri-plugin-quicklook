@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-show-preview-pane"
+description = "Enables the show_preview_pane command without any pre-configured scope."
+commands.allow = ["show_preview_pane"]
+
+[[permission]]
+identifier = "deny-show-preview-pane"
+description = "Denies the show_preview_pane command without any pre-configured scope."
+commands.deny = ["show_preview_pane"]
