@@ -14,7 +14,7 @@ importers:
       '@tauri-apps/plugin-dialog':
         specifier: ~2.7.1
         version: 2.7.1
-      tauri-plugin-quicklook-api:
+      tauri-plugin-quicklook:
         specifier: file:../../
         version: file:../..
     devDependencies:
@@ -436,7 +436,7 @@ packages:
     resolution: {integrity: sha512-2uCs/LZ9us+AktdzYJM8OcxQ8qnPS1kpaO7syGT/MgO+6Qr1Ybl+TqPq+97u7PHqmmMlye5ZkoyXONy5mjjAbw==}
     engines: {node: '>=18'}
 
-  tauri-plugin-quicklook-api@file:../..:
+  tauri-plugin-quicklook@file:../..:
     resolution: {directory: ../.., type: directory}
 
   tinyglobby@0.2.16:
@@ -816,7 +816,7 @@ snapshots:
     transitivePeerDependencies:
       - '@typescript-eslint/types'
 
-  tauri-plugin-quicklook-api@file:../..:
+  tauri-plugin-quicklook@file:../..:
     dependencies:
       '@tauri-apps/api': 2.11.0
 

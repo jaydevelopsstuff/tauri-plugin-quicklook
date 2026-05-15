@@ -5,7 +5,7 @@
         domRectToScreenSourceFrame,
         setPreviewItems,
         showPreviewPane,
-    } from "tauri-plugin-quicklook-api";
+    } from "tauri-plugin-quicklook";
 
     document.addEventListener("keydown", async (event) => {
         if (event.key === " ") {

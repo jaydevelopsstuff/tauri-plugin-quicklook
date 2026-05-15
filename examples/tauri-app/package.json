@@ -12,7 +12,7 @@
     "dependencies": {
         "@tauri-apps/api": "^2.0.0",
         "@tauri-apps/plugin-dialog": "~2.7.1",
-        "tauri-plugin-quicklook-api": "file:../../"
+        "tauri-plugin-quicklook": "file:../../"
     },
     "devDependencies": {
         "@sveltejs/vite-plugin-svelte": "^7.0.0",
