@@ -3,12 +3,6 @@
 This plugin provides APIs to display and manage the macOS 
 [QuickLookUI Preview Pane](https://developer.apple.com/documentation/quicklookui/qlpreviewpanel).
 
-
-At the lower level, this crate makes use of the [`quicklook`](https://crates.io/crates/quicklook) crate,
-which provides a general purpose easy-to-use Rust wrapper of QuickLookUI. If you need to access QuickLookUI
-APIs within a **non-Tauri** Rust application, you should probably use `quicklook`.
-
-
 | Platform | Supported |
 | -------- | --------- |
 | Linux    | x         |
@@ -16,6 +10,10 @@ APIs within a **non-Tauri** Rust application, you should probably use `quicklook
 | macOS    | ✓         |
 | Android  | x         |
 | iOS      | x         |
+
+At the lower level, this crate makes use of the [`quicklook`](https://crates.io/crates/quicklook) crate,
+which provides a general purpose easy-to-use Rust wrapper of QuickLookUI. If you need to access QuickLookUI
+APIs within a **non-Tauri** Rust application, you should probably use `quicklook`.
 
 ## Install
 You must install the core plugin by adding the following to your Cargo.toml file:
