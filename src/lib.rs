@@ -21,7 +21,7 @@ pub use error::{Error, Result};
 use desktop::Quicklook;
 
 thread_local! {
-    pub static PANEL: OnceCell<QuickLookPanel> = OnceCell::new();
+    pub(crate) static PANEL: OnceCell<QuickLookPanel> = OnceCell::new();
 }
 
 /// Extensions to [`tauri::App`], [`tauri::AppHandle`] and [`tauri::Window`] to access the quicklook APIs.

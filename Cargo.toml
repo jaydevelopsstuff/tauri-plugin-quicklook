@@ -2,17 +2,21 @@
 name = "tauri-plugin-quicklook"
 version = "0.1.0"
 authors = ["Justin Harrell"]
-description = ""
+description = "A Tauri plugin providing APIs to display and manage the macOS QuickLookUI Preview Pane."
+keywords = ["tauri", "macos", "appkit", "quicklook-ui", "apple"]
+categories = ["os::macos-apis", "api-bindings"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/jaydevelopsstuff/tauri-plugin-quicklook"
 edition = "2021"
 rust-version = "1.77.2"
 exclude = ["/examples", "/dist-js", "/guest-js", "/node_modules"]
 links = "tauri-plugin-quicklook"
 
 [dependencies]
-tauri = { version = "2.11.1" }
+tauri = { version = "2.11" }
 serde = "1.0"
 thiserror = "2"
-quicklook = { path = "/Users/justinharrell/Documents/Coding/quicklook-rs/quicklook", features = ["serde"] }
+quicklook = { version = "0.1.6", features = ["serde"] }
 
 [build-dependencies]
-tauri-plugin = { version = "2.6.1", features = ["build"] }
+tauri-plugin = { version = "2.6", features = ["build"] }

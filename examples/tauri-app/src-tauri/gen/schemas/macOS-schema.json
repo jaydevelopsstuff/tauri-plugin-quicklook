@@ -2265,16 +2265,64 @@
           "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `preview-pane`"
         },
         {
-          "description": "Enables the ping command without any pre-configured scope.",
+          "description": "Enables the hide_preview_pane command without any pre-configured scope.",
           "type": "string",
-          "const": "quicklook:allow-ping",
-          "markdownDescription": "Enables the ping command without any pre-configured scope."
+          "const": "quicklook:allow-hide-preview-pane",
+          "markdownDescription": "Enables the hide_preview_pane command without any pre-configured scope."
         },
         {
-          "description": "Denies the ping command without any pre-configured scope.",
+          "description": "Enables the set_preview_items command without any pre-configured scope.",
           "type": "string",
-          "const": "quicklook:deny-ping",
-          "markdownDescription": "Denies the ping command without any pre-configured scope."
+          "const": "quicklook:allow-set-preview-items",
+          "markdownDescription": "Enables the set_preview_items command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the set_preview_items_and_show command without any pre-configured scope.",
+          "type": "string",
+          "const": "quicklook:allow-set-preview-items-and-show",
+          "markdownDescription": "Enables the set_preview_items_and_show command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the show_preview_pane command without any pre-configured scope.",
+          "type": "string",
+          "const": "quicklook:allow-show-preview-pane",
+          "markdownDescription": "Enables the show_preview_pane command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the toggle_preview_pane command without any pre-configured scope.",
+          "type": "string",
+          "const": "quicklook:allow-toggle-preview-pane",
+          "markdownDescription": "Enables the toggle_preview_pane command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the hide_preview_pane command without any pre-configured scope.",
+          "type": "string",
+          "const": "quicklook:deny-hide-preview-pane",
+          "markdownDescription": "Denies the hide_preview_pane command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the set_preview_items command without any pre-configured scope.",
+          "type": "string",
+          "const": "quicklook:deny-set-preview-items",
+          "markdownDescription": "Denies the set_preview_items command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the set_preview_items_and_show command without any pre-configured scope.",
+          "type": "string",
+          "const": "quicklook:deny-set-preview-items-and-show",
+          "markdownDescription": "Denies the set_preview_items_and_show command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the show_preview_pane command without any pre-configured scope.",
+          "type": "string",
+          "const": "quicklook:deny-show-preview-pane",
+          "markdownDescription": "Denies the show_preview_pane command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the toggle_preview_pane command without any pre-configured scope.",
+          "type": "string",
+          "const": "quicklook:deny-toggle-preview-pane",
+          "markdownDescription": "Denies the toggle_preview_pane command without any pre-configured scope."
         },
         {
           "description": "Enable showing and hiding the preview pane as well as setting preview pane items.",
