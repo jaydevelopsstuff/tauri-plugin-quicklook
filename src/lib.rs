@@ -41,6 +41,7 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
         .invoke_handler(tauri::generate_handler![
             commands::set_preview_items,
             commands::set_preview_items_and_show,
+            commands::reload_preview_pane,
             commands::show_preview_pane,
             commands::hide_preview_pane,
             commands::toggle_preview_pane

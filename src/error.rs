@@ -4,8 +4,6 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
     #[error("NSURL could not be initialized: Malformed URL")]
     NSURLMalformedURLString,
     #[error("Failed to dispatch execution to main thread")]

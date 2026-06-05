@@ -1,7 +1,7 @@
 use crate::Result;
 use quicklook::QuickLookHandle;
 use serde::de::DeserializeOwned;
-use tauri::{plugin::PluginApi, AppHandle, Runtime};
+use tauri::{plugin::PluginApi, AppHandle, Manager, Runtime};
 
 use crate::{models::*, Error, PANEL};
 
@@ -24,12 +24,36 @@ pub struct Quicklook<R: Runtime> {
 
 impl<R: Runtime> Quicklook<R> {
     /// Sets the preview pane's items and reloads the pane.
+    ///
+    /// **IMPORTANT**: If you change the URLs or order of the items you MUST
+    /// call [`Quicklook::queue_reload_if_dirty`] after for your changes to take visual effect.
+    /// However, if you are only updating the source frames of pre-existing items you
+    /// can safely avoid reloading.
     pub fn set_items(&self, items: Vec<PreviewItem>) -> Result<()> {
         self.set_items_raw(
             items
                 .into_iter()
                 .map(|i| {
-                    quicklook::PreviewItem::from_url_string(i.url, i.src_frame)
+                    let frame = match i.src_frame {
+                        Some(SourceFrame::Screen(rect)) => {
+                            Some(quicklook::SourceFrame::Screen(rect))
+                        }
+                        Some(SourceFrame::Window { window_label, rect }) => self
+                            .app_handle
+                            .get_webview_window(&window_label)
+                            .and_then(|w| {
+                                quicklook::SourceFrame::window(
+                                    &w,
+                                    rect.x,
+                                    rect.y,
+                                    rect.width,
+                                    rect.height,
+                                )
+                            }),
+                        None => None,
+                    };
+
+                    quicklook::PreviewItem::from_url_string(i.url, frame)
                         .ok_or(Error::NSURLMalformedURLString)
                 })
                 .collect::<Result<Vec<quicklook::PreviewItem>>>()?,
@@ -41,19 +65,21 @@ impl<R: Runtime> Quicklook<R> {
     /// Sets the preview pane's items using [`quicklook::PreviewItem`] and reloads
     /// the pane. This is useful if you want to manually initialize `NSURL`s yourself.
     ///
+    /// **IMPORTANT**: If you change the URLs or order of the items you MUST
+    /// call [`Quicklook::queue_reload_if_dirty`] after for your changes to take visual effect.
+    /// However, if you are only updating the source frames of pre-existing items you
+    /// can safely avoid reloading.
+    ///
     /// ## See Also
+    /// - [`quicklook::PreviewItem`]
     /// - [`NSURL`](https://docs.rs/objc2-foundation/latest/objc2_foundation/struct.NSURL.html)
     pub fn set_items_raw(&self, items: Vec<quicklook::PreviewItem>) -> Result<()> {
         self.quicklook_handle.set_items(items);
-        self.queue_reload_if_dirty()?;
         Ok(())
     }
 
     /// Queues a panel reload that will be executed if the list of items has
     /// been modified.
-    ///
-    /// It is very unlikely you will need to call this method yourself, as all
-    /// other methods that mutate the preview items automatically call this.
     pub fn queue_reload_if_dirty(&self) -> Result<()> {
         self.app_handle
             .run_on_main_thread(|| {

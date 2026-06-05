@@ -24,6 +24,11 @@ pub(crate) fn set_preview_items_and_show<R: Runtime>(
 }
 
 #[command(async)]
+pub(crate) fn reload_preview_pane<R: Runtime>(app: AppHandle<R>) -> Result<()> {
+    app.quicklook().queue_reload_if_dirty()
+}
+
+#[command(async)]
 pub(crate) fn show_preview_pane<R: Runtime>(app: AppHandle<R>) -> Result<()> {
     app.quicklook().queue_show()
 }

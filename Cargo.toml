@@ -16,7 +16,7 @@ links = "tauri-plugin-quicklook"
 tauri = { version = "2.11" }
 serde = "1.0"
 thiserror = "2"
-quicklook = { version = "0.1.6", features = ["serde"] }
+quicklook = { version = "0.2", features = ["serde"] }
 
 [build-dependencies]
 tauri-plugin = { version = "2.6", features = ["build"] }

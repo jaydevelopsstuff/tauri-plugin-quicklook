@@ -1,19 +1,22 @@
 import { invoke } from "@tauri-apps/api/core";
-import { currentMonitor, getCurrentWindow } from "@tauri-apps/api/window";
+import { getCurrentWindow, Monitor, Window } from "@tauri-apps/api/window";
 
 /**
  * Takes a DOMRect (usually obtained from {@linkcode Element.getBoundingClientRect}) and converts
- * it to a screen source frame using the current window and monitor.
+ * it to a window-relative source frame.
  *
+ * @param window The window this DOMRect is from (usually `getCurrentWindow`)
  * @param rect The input {@linkcode DOMRect}
- * @returns The source frame, with coordinates converted to AppKit screen space
+ * @returns The source frame, with window-relative coordinates converted to AppKit coordinates
  *
- * @see {@linkcode positionAndDimensionsToScreenSourceFrame}
+ * @see {@linkcode positionAndDimensionsToWindowSourceFrame}
  */
-export async function domRectToScreenSourceFrame(
+export async function domRectToWindowSourceFrame(
+    window: Window,
     rect: DOMRect,
 ): Promise<SourceFrame> {
-    return await positionAndDimensionsToScreenSourceFrame(
+    return await positionAndDimensionsToWindowSourceFrame(
+        window,
         rect.x,
         rect.y,
         rect.width,
@@ -22,32 +25,64 @@ export async function domRectToScreenSourceFrame(
 }
 
 /**
- * Converts viewport position and dimensions to a screen source frame for the current window
- * and monitor.
+ * Converts viewport position and dimensions to a window-relative source frame.
  *
+ * @param window The window that this source frame is relative to (usually `getCurrentWindow`)
  * @param x Viewport x-coordinate
  * @param y Viewport y-coordinate
  * @param width Pixel Width
  * @param height Pixel Height
- * @returns The source frame, with coordinates converted to AppKit screen space
+ * @returns The source frame, with window-relative coordinates converted to AppKit coordinates
  */
-export async function positionAndDimensionsToScreenSourceFrame(
+export async function positionAndDimensionsToWindowSourceFrame(
+    window: Window,
     x: number,
     y: number,
     width: number,
     height: number,
 ): Promise<SourceFrame> {
-    const scaleFactor = await getCurrentWindow().scaleFactor();
-    const monitorSize = (await currentMonitor())!.size.toLogical(scaleFactor);
-    const windowPosOut = (await getCurrentWindow().innerPosition()).toLogical(
-        scaleFactor,
-    );
+    const scaleFactor = await window.scaleFactor();
+    const windowSize = (await window.innerSize()).toLogical(scaleFactor);
 
     return {
-        x: windowPosOut.x + x,
-        y: monitorSize.height - (windowPosOut.y + y + height),
-        width,
-        height,
+        Window: {
+            windowLabel: window.label,
+            rect: {
+                x,
+                y: windowSize.height - (y + height),
+                width,
+                height,
+            },
+        },
+    };
+}
+
+/**
+ * Converts screen position and dimensions to a screen-relative source frame.
+ *
+ * @param monitor The monitor (screen) that the coordinates are relative to
+ * @param x Screen x-coordinate
+ * @param y Screen y-coordinate (relative to top of monitor)
+ * @param width Pixel Width
+ * @param height Pixel Height
+ * @returns The resulting screen-relative source frame
+ */
+export function positionAndDimensionsToScreenSourceFrame(
+    monitor: Monitor,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+): SourceFrame {
+    const monitorSize = monitor.size.toLogical(monitor.scaleFactor);
+
+    return {
+        Screen: {
+            x,
+            y: monitorSize.height - (y + height),
+            width,
+            height,
+        },
     };
 }
 
@@ -55,9 +90,10 @@ export async function positionAndDimensionsToScreenSourceFrame(
  * Sets the preview items displayed in the preview pane, overriding
  * previously set items.
  *
- * This works on the fly—that is, if the user already has the preview
- * pane open and you update the items through this method, those changes
- * will automatically be visually reflected.
+ * **IMPORTANT**: If the preview items' url or order has changed you MUST
+ * call {@linkcode reloadPreviewPane} for your changes to take visual effect.
+ * If you are only using this to update the source frame of pre-existing items,
+ * {@linkcode reloadPreviewPane} is not necessary.
  *
  * @see {@linkcode setPreviewItemsAndShow}
  * @param items The new preview items
@@ -72,11 +108,8 @@ export async function setPreviewItems(items: PreviewItem[]) {
 
 /**
  * Sets the preview items displayed in the preview pane, and then
- * subsequently shows the preview pane.
- *
- * This works on the fly—that is, if the user already has the preview
- * pane open and you update the items through this method, those changes
- * will automatically be visually reflected.
+ * subsequently shows the preview pane. You should use
+ * {@linkcode setPreviewItems} if the preview pane is already open.
  *
  * @see {@linkcode setPreviewItems}
  * @param items The new preview items
@@ -87,6 +120,13 @@ export async function setPreviewItemsAndShow(items: PreviewItem[]) {
             items,
         },
     });
+}
+
+/**
+ *
+ */
+export async function reloadPreviewPane() {
+    await invoke("plugin:quicklook|reload_preview_pane");
 }
 
 /**
@@ -107,7 +147,7 @@ export async function showPreviewPane() {
  * @see {@linkcode togglePreviewPane}
  */
 export async function hidePreviewPane() {
-    return await invoke("plugin:quicklook|show_preview_pane");
+    return await invoke("plugin:quicklook|hide_preview_pane");
 }
 
 /**
@@ -117,7 +157,7 @@ export async function hidePreviewPane() {
  * @see {@linkcode showPreviewPane}
  * @see {@linkcode hidePreviewPane}
  */
-async function togglePreviewPane() {
+export async function togglePreviewPane() {
     return await invoke("plugin:quicklook|toggle_preview_pane");
 }
 
@@ -125,7 +165,7 @@ async function togglePreviewPane() {
  * Representation of a preview item that can be shown in a
  * quicklook preview pane.
  */
-export declare type PreviewItem = {
+export type PreviewItem = {
     /**
      * The required url for the preview item. Must be valid.
      *
@@ -140,18 +180,39 @@ export declare type PreviewItem = {
     srcFrame?: SourceFrame;
 };
 
-/**
- * Describes a frame on the screen where a preview item originates from.
- * Coordinates are in screen space (NOT the window).
+/** Describes a source frame where a preview item originates from. You should use the provided helper constructor
+ * functions to instantiate a source frame rather than manually creating one, though you can if you want surgical
+ * control.
  *
- * In AppKit/Cocoa, coordinates are relative to the bottom-left corner
- * of the screen, so you must take that into account when calculating
- * your frame's `y` position.
+ * This is used when the preview pane is opened or close, where if a source frame is specified for the currently
+ * viewed item the pane will animate the pane through scaling it in or out to make it appear as if the preview pane
+ * is spawning from or "coming out of" the source frame.
  *
- * @see {@linkcode domRectToScreenSourceFrame}
+ * @see {@linkcode domRectToWindowSourceFrame}
+ * @see {@linkcode positionAndDimensionsToWindowSourceFrame}
  * @see {@linkcode positionAndDimensionsToScreenSourceFrame}
  */
-export declare type SourceFrame = {
+export type SourceFrame =
+    | { Screen: SourceFrameDimensions; Window?: never }
+    | {
+          Window: { windowLabel: string; rect: SourceFrameDimensions };
+          Screen?: never;
+      };
+
+/**
+ * Describes a frame with coordinates relative either to the entire screen or a window
+ * where the preview item originates from. Coordinates are in logical pixels.
+ *
+ * In AppKit/Cocoa, coordinates are relative to the bottom-left corner
+ * of the window or screen, so you must take that into account when calculating
+ * your frame's `y` position. Helper constructor functions are provided in the library
+ * to help with this.
+ *
+ * @see {@linkcode domRectToWindowSourceFrame}
+ * @see {@linkcode positionAndDimensionsToWindowSourceFrame}
+ * @see {@linkcode positionAndDimensionsToScreenSourceFrame}
+ */
+export type SourceFrameDimensions = {
     x: number;
     y: number;
     width: number;
