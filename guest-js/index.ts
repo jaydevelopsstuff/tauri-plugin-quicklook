@@ -1,5 +1,105 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow, Monitor, Window } from "@tauri-apps/api/window";
+
+function observeElementRect(
+    element: Element,
+    callback: (rect: DOMRect) => void,
+): () => void {
+    let prev = element.getBoundingClientRect();
+    let scheduled = false;
+
+    const hasChanged = (a: DOMRect, b: DOMRect) =>
+        a.x !== b.x ||
+        a.y !== b.y ||
+        a.width !== b.width ||
+        a.height !== b.height;
+
+    const emit = () => {
+        scheduled = false;
+
+        const rect = element.getBoundingClientRect();
+
+        if (hasChanged(rect, prev)) {
+            prev = rect;
+
+            callback(rect);
+        }
+    };
+
+    const schedule = () => {
+        if (!scheduled) {
+            scheduled = true;
+            requestAnimationFrame(emit);
+        }
+    };
+
+    // Element resize
+    const resizeObserver = new ResizeObserver(schedule);
+    resizeObserver.observe(element);
+
+    // DOM/layout/style changes
+    const mutationObserver = new MutationObserver(schedule);
+
+    mutationObserver.observe(document.body, {
+        attributes: true,
+        childList: true,
+        subtree: true,
+        characterData: false,
+    });
+
+    // Initial emit
+    schedule();
+
+    return () => {
+        resizeObserver.disconnect();
+        mutationObserver.disconnect();
+    };
+}
+
+export async function setAndTrackPreviewElements(
+    elementItems: { url: string; element: Element }[],
+) {
+    async function syncPreviewItems() {
+        const items = await Promise.all(
+            elementItems.map(async (item) => ({
+                url: item.url,
+                srcFrame: await domRectToWindowSourceFrame(
+                    getCurrentWindow(),
+                    item.element.getBoundingClientRect(),
+                ),
+            })),
+        );
+        await setPreviewItems(items);
+        // We don't need to reload the preview pane since only the source frames are changed
+        return items;
+    }
+
+    const previousPreviewItems = await syncPreviewItems();
+
+    const resizeUnlisten = await getCurrentWindow().listen(
+        "tauri://resize",
+        syncPreviewItems,
+    );
+    window.addEventListener("scroll", syncPreviewItems, true);
+
+    const observorCleanups = elementItems.map((item, i) =>
+        observeElementRect(item.element, async () => {
+            previousPreviewItems[i].srcFrame = await domRectToWindowSourceFrame(
+                getCurrentWindow(),
+                item.element.getBoundingClientRect(),
+            );
+            await setPreviewItems(previousPreviewItems);
+            // We don't need to reload the preview pane since only the source frame is changed
+        }),
+    );
+
+    return () => {
+        resizeUnlisten();
+        window.removeEventListener("scroll", syncPreviewItems);
+        observorCleanups.forEach((c) => c());
+    };
+}
 
 /**
  * Takes a DOMRect (usually obtained from {@linkcode Element.getBoundingClientRect}) and converts

@@ -1,13 +1,9 @@
 <script lang="ts">
     import { convertFileSrc } from "@tauri-apps/api/core";
-    import { getCurrentWindow, PhysicalPosition } from "@tauri-apps/api/window";
     import { open } from "@tauri-apps/plugin-dialog";
-    import { onMount } from "svelte";
     import {
-        domRectToWindowSourceFrame,
-        reloadPreviewPane,
-        setPreviewItems,
         togglePreviewPane,
+        setAndTrackPreviewElements,
     } from "tauri-plugin-quicklook";
 
     document.addEventListener("keydown", async (event) => {
@@ -17,15 +13,15 @@
         }
     });
 
-    document.addEventListener("scroll", syncPreviewItems);
-
-    onMount(async () => {
-        getCurrentWindow().listen("tauri://resize", syncPreviewItems);
-    });
-
     let imagePaths = $state([]);
 
+    let prevUnlisten: () => void = () => {};
+    let prevInterval: number | null = null;
+
     async function chooseImages() {
+        if (prevInterval) clearInterval(prevInterval);
+        prevUnlisten();
+
         imagePaths = await open({
             multiple: true,
             directory: false,
@@ -36,27 +32,29 @@
                 },
             ],
         });
-        // Give the DOM time to calculate image dimensions
-        // FIXME: Kinda janky
-        setTimeout(async () => {
-            await syncPreviewItems();
-            await reloadPreviewPane();
-        }, 50);
-    }
 
-    async function syncPreviewItems() {
-        const items = await Promise.all(
-            imagePaths.map(async (path) => ({
-                url: `file://${path}`,
-                srcFrame: await domRectToWindowSourceFrame(
-                    getCurrentWindow(),
-                    document
-                        .getElementById(`img:${path}`)
-                        .getBoundingClientRect(),
-                ),
-            })),
+        // Set our preview items and track the position of their elements once they've
+        // been established on the DOM
+        requestAnimationFrame(
+            async () =>
+                (prevUnlisten = await setAndTrackPreviewElements(
+                    await Promise.all(
+                        imagePaths.map(async (path) => ({
+                            url: `file://${path}`,
+                            element: document.getElementById(`img:${path}`),
+                        })),
+                    ),
+                )),
         );
-        await setPreviewItems(items);
+
+        // Move the images around randomly to demonstrate that `setAndTrackPreviewElements`
+        // does indeed track elements and update their source frames.
+        prevInterval = setInterval(() => {
+            for (const path of imagePaths) {
+                document.getElementById(`img:${path}`).style.top =
+                    `${Math.round(Math.random() * 150)}px`;
+            }
+        }, 4000);
     }
 </script>
 
@@ -92,6 +90,7 @@
         object-fit: contain;
     }
     img {
+        position: relative;
         max-height: 24rem;
     }
     button {
