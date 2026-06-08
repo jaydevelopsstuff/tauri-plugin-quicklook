@@ -1,62 +1,22 @@
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow, Monitor, Window } from "@tauri-apps/api/window";
+import { observeElementRect } from "./utils";
+import { PreviewItem, SourceFrame } from "./types";
 
-function observeElementRect(
-    element: Element,
-    callback: (rect: DOMRect) => void,
-): () => void {
-    let prev = element.getBoundingClientRect();
-    let scheduled = false;
-
-    const hasChanged = (a: DOMRect, b: DOMRect) =>
-        a.x !== b.x ||
-        a.y !== b.y ||
-        a.width !== b.width ||
-        a.height !== b.height;
-
-    const emit = () => {
-        scheduled = false;
-
-        const rect = element.getBoundingClientRect();
-
-        if (hasChanged(rect, prev)) {
-            prev = rect;
-
-            callback(rect);
-        }
-    };
-
-    const schedule = () => {
-        if (!scheduled) {
-            scheduled = true;
-            requestAnimationFrame(emit);
-        }
-    };
-
-    // Element resize
-    const resizeObserver = new ResizeObserver(schedule);
-    resizeObserver.observe(element);
-
-    // DOM/layout/style changes
-    const mutationObserver = new MutationObserver(schedule);
-
-    mutationObserver.observe(document.body, {
-        attributes: true,
-        childList: true,
-        subtree: true,
-        characterData: false,
-    });
-
-    // Initial emit
-    schedule();
-
-    return () => {
-        resizeObserver.disconnect();
-        mutationObserver.disconnect();
-    };
-}
-
+/**
+ * Takes an input list of preview item URLs and the elements that represent them and
+ * creates listeners to track changes in their position/size, track user scroll anywhere
+ * in the viewport, and changes in the size of the window—refetching the bounding rect of
+ * elements when (a) listener(s) fires and updating the source frames of preview items to
+ * reflect the change.
+ *
+ * This is a catch-all use case when your preview items might move around and/or the user might
+ * scroll or resize the window while the preview pane is open. If you don't need this level of
+ * dynamic coverage you can just use {@link setPreviewItems}.
+ *
+ * @param elementItems The elements to track/update and their URLs
+ * @returns Unlistener callback
+ */
 export async function setAndTrackPreviewElements(
     elementItems: { url: string; element: Element }[],
 ) {
@@ -102,14 +62,14 @@ export async function setAndTrackPreviewElements(
 }
 
 /**
- * Takes a DOMRect (usually obtained from {@linkcode Element.getBoundingClientRect}) and converts
+ * Takes a DOMRect (usually obtained from {@link Element.getBoundingClientRect}) and converts
  * it to a window-relative source frame.
  *
  * @param window The window this DOMRect is from (usually `getCurrentWindow`)
- * @param rect The input {@linkcode DOMRect}
+ * @param rect The input {@link DOMRect}
  * @returns The source frame, with window-relative coordinates converted to AppKit coordinates
  *
- * @see {@linkcode positionAndDimensionsToWindowSourceFrame}
+ * @see {@link positionAndDimensionsToWindowSourceFrame}
  */
 export async function domRectToWindowSourceFrame(
     window: Window,
@@ -191,15 +151,15 @@ export function positionAndDimensionsToScreenSourceFrame(
  * previously set items.
  *
  * **IMPORTANT**: If the preview items' url or order has changed you MUST
- * call {@linkcode reloadPreviewPane} for your changes to take visual effect.
+ * call {@link reloadPreviewPane} for your changes to take visual effect.
  * If you are only using this to update the source frame of pre-existing items,
- * {@linkcode reloadPreviewPane} is not necessary.
+ * {@link reloadPreviewPane} is not necessary.
  *
- * @see {@linkcode setPreviewItemsAndShow}
+ * @see {@link setPreviewItemsAndShow}
  * @param items The new preview items
  */
 export async function setPreviewItems(items: PreviewItem[]) {
-    return await invoke("plugin:quicklook|set_preview_items", {
+    await invoke("plugin:quicklook|set_preview_items", {
         payload: {
             items,
         },
@@ -209,13 +169,13 @@ export async function setPreviewItems(items: PreviewItem[]) {
 /**
  * Sets the preview items displayed in the preview pane, and then
  * subsequently shows the preview pane. You should use
- * {@linkcode setPreviewItems} if the preview pane is already open.
+ * {@link setPreviewItems} if the preview pane is already open.
  *
- * @see {@linkcode setPreviewItems}
+ * @see {@link setPreviewItems}
  * @param items The new preview items
  */
 export async function setPreviewItemsAndShow(items: PreviewItem[]) {
-    return await invoke("plugin:quicklook|set_preview_items_and_show", {
+    await invoke("plugin:quicklook|set_preview_items_and_show", {
         payload: {
             items,
         },
@@ -233,88 +193,32 @@ export async function reloadPreviewPane() {
  * Shows the preview pane to the user based on the previously
  * set items.
  *
- * @see {@linkcode hidePreviewPane}
- * @see {@linkcode togglePreviewPane}
+ * @see {@link hidePreviewPane}
+ * @see {@link togglePreviewPane}
  */
 export async function showPreviewPane() {
-    return await invoke("plugin:quicklook|show_preview_pane");
+    await invoke("plugin:quicklook|show_preview_pane");
 }
 
 /**
  * Hides the preview pane from the user.
  *
- * @see {@linkcode showPreviewPane}
- * @see {@linkcode togglePreviewPane}
+ * @see {@link showPreviewPane}
+ * @see {@link togglePreviewPane}
  */
 export async function hidePreviewPane() {
-    return await invoke("plugin:quicklook|hide_preview_pane");
+    await invoke("plugin:quicklook|hide_preview_pane");
 }
 
 /**
  * Requests the preview pane to be hidden if its currently
  * visible, and vice versa if its currently shown.
  *
- * @see {@linkcode showPreviewPane}
- * @see {@linkcode hidePreviewPane}
+ * @see {@link showPreviewPane}
+ * @see {@link hidePreviewPane}
  */
 export async function togglePreviewPane() {
-    return await invoke("plugin:quicklook|toggle_preview_pane");
+    await invoke("plugin:quicklook|toggle_preview_pane");
 }
 
-/**
- * Representation of a preview item that can be shown in a
- * quicklook preview pane.
- */
-export type PreviewItem = {
-    /**
-     * The required url for the preview item. Must be valid.
-     *
-     * File urls should begin with `file://`
-     */
-    url: string;
-    /**
-     * Optional source frame for the preview item. If this is specified
-     * the preview pane will have zoom in and out animations on show
-     * and hide—without it it will just fade in and out.
-     */
-    srcFrame?: SourceFrame;
-};
-
-/** Describes a source frame where a preview item originates from. You should use the provided helper constructor
- * functions to instantiate a source frame rather than manually creating one, though you can if you want surgical
- * control.
- *
- * This is used when the preview pane is opened or close, where if a source frame is specified for the currently
- * viewed item the pane will animate the pane through scaling it in or out to make it appear as if the preview pane
- * is spawning from or "coming out of" the source frame.
- *
- * @see {@linkcode domRectToWindowSourceFrame}
- * @see {@linkcode positionAndDimensionsToWindowSourceFrame}
- * @see {@linkcode positionAndDimensionsToScreenSourceFrame}
- */
-export type SourceFrame =
-    | { Screen: SourceFrameDimensions; Window?: never }
-    | {
-          Window: { windowLabel: string; rect: SourceFrameDimensions };
-          Screen?: never;
-      };
-
-/**
- * Describes a frame with coordinates relative either to the entire screen or a window
- * where the preview item originates from. Coordinates are in logical pixels.
- *
- * In AppKit/Cocoa, coordinates are relative to the bottom-left corner
- * of the window or screen, so you must take that into account when calculating
- * your frame's `y` position. Helper constructor functions are provided in the library
- * to help with this.
- *
- * @see {@linkcode domRectToWindowSourceFrame}
- * @see {@linkcode positionAndDimensionsToWindowSourceFrame}
- * @see {@linkcode positionAndDimensionsToScreenSourceFrame}
- */
-export type SourceFrameDimensions = {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-};
+export * from "./types";
