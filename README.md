@@ -48,3 +48,29 @@ fn main() {
 ```
 
 Afterwards all the plugin's APIs are available through the JavaScript guest bindings.
+
+```typescript
+import { domRectToWindowSourceFrame, setPreviewItems } from "tauri-plugin-quicklook";
+
+// This function could be called when a user clicks a button or presses the spacebar
+// 
+// This is naive, read below this code and see `setAndTrackPreviewElements`
+async function displayPreviewPane() {
+    const imgFilePath = "/path/to/example-image/image.png";
+    const imgElement = document.getElementById("example-image");
+    
+    await setPreviewItems([
+        {
+            url: `file://${imgFilePath}`,
+            srcFrame: await domRectToWindowSourceFrame(
+                getCurrentWindow(),
+                imgElement.getBoundingClientRect()
+            )
+        }
+    ])
+}
+```
+
+Note: This is a naive implementation that assumes the user won't scroll, resize the window, and that the
+preview items won't change while the preview pane is open. For a robust example covering edge
+cases like the aforementioned, check out [`examples/tauri-app`](./examples/tauri-app).
