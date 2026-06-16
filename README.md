@@ -3,6 +3,8 @@
 This plugin provides APIs to display and manage the macOS 
 [QuickLookUI Preview Pane](https://developer.apple.com/documentation/quicklookui/qlpreviewpanel).
 
+https://github.com/user-attachments/assets/6889cb6e-1d5c-4dcd-8d5d-4a8f5bc652d2
+
 | Platform | Supported |
 | -------- | --------- |
 | Linux    | x         |
