@@ -13,7 +13,7 @@
         }
     });
 
-    let imagePaths = $state([]);
+    let imagePaths = $state<string[]>([]);
 
     let prevUnlisten: () => void = () => {};
     let prevInterval: number | null = null;
@@ -22,16 +22,17 @@
         if (prevInterval) clearInterval(prevInterval);
         prevUnlisten();
 
-        imagePaths = await open({
-            multiple: true,
-            directory: false,
-            filters: [
-                {
-                    name: "Images Only",
-                    extensions: ["png", "jpg", "jpeg"],
-                },
-            ],
-        });
+        imagePaths =
+            (await open({
+                multiple: true,
+                directory: false,
+                filters: [
+                    {
+                        name: "Images Only",
+                        extensions: ["png", "jpg", "jpeg"],
+                    },
+                ],
+            })) ?? [];
 
         // Set our preview items and track the position of their elements once they've
         // been established on the DOM
@@ -41,7 +42,7 @@
                     await Promise.all(
                         imagePaths.map(async (path) => ({
                             url: `file://${path}`,
-                            element: document.getElementById(`img:${path}`),
+                            element: document.getElementById(`img:${path}`)!,
                         })),
                     ),
                 )),
@@ -51,7 +52,7 @@
         // does indeed track elements and update their source frames.
         prevInterval = setInterval(() => {
             for (const path of imagePaths) {
-                document.getElementById(`img:${path}`).style.top =
+                document.getElementById(`img:${path}`)!.style.top =
                     `${Math.round(Math.random() * 150)}px`;
             }
         }, 4000);
