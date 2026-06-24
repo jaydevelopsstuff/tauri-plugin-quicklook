@@ -7,4 +7,5 @@ commands.allow = [
     "show_preview_pane",
     "hide_preview_pane",
     "toggle_preview_pane",
+    "reload_preview_pane"
 ]
