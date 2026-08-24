@@ -1,6 +1,6 @@
 [package]
 name = "tauri-plugin-quicklook"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Justin Harrell"]
 description = "A Tauri plugin providing APIs to display and manage the macOS QuickLookUI Preview Pane."
 keywords = ["tauri", "macos", "appkit", "quicklook-ui", "apple"]
@@ -16,7 +16,7 @@ links = "tauri-plugin-quicklook"
 tauri = { version = "2.11" }
 serde = "1.0"
 thiserror = "2"
-quicklook = { version = "0.2", features = ["serde"] }
+quicklook = { version = "0.2.1", features = ["serde"] }
 
 [build-dependencies]
 tauri-plugin = { version = "2.6", features = ["build"] }
