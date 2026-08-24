@@ -1,6 +1,6 @@
 {
     "name": "tauri-plugin-quicklook",
-    "version": "0.2.1",
+    "version": "0.2.3",
     "author": "Justin Harrell",
     "description": "",
     "type": "module",
