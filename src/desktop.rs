@@ -68,13 +68,32 @@ impl<R: Runtime> Quicklook<R> {
     /// **IMPORTANT**: If you change the URLs or order of the items you MUST
     /// call [`Quicklook::queue_reload_if_dirty`] after for your changes to take visual effect.
     /// However, if you are only updating the source frames of pre-existing items you
-    /// can safely avoid reloading.
+    /// can safely avoid reloading — including an item regaining a frame it previously
+    /// lacked, which this method detects and resolves with a panel reload on its own
+    /// (see [`quicklook::QuickLookPanel::upgrade_animation_for_restored_frames`]).
     ///
     /// ## See Also
     /// - [`quicklook::PreviewItem`]
     /// - [`NSURL`](https://docs.rs/objc2-foundation/latest/objc2_foundation/struct.NSURL.html)
     pub fn set_items_raw(&self, items: Vec<quicklook::PreviewItem>) -> Result<()> {
         self.quicklook_handle.set_items(items);
+
+        // A frame coming back to an item that had none (e.g. a tracked element
+        // scrolling back into view) is the one frame-only update the open panel
+        // won't honor by itself: it commits to the fade animation when it opens
+        // without a frame and never re-asks. Upgrade it to the zoom on the main
+        // thread when that happens.
+        if self.quicklook_handle.take_frame_restored() {
+            self.app_handle
+                .run_on_main_thread(|| {
+                    PANEL.with(|p| {
+                        // SAFETY: OnceCell is initialized in `setup`
+                        p.get().unwrap().upgrade_animation_for_restored_frames();
+                    });
+                })
+                .map_err(|_| Error::MainThreadDispatchFailed)?;
+        }
+
         Ok(())
     }
 
