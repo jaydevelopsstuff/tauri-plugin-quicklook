@@ -35,6 +35,41 @@ export type PreviewItem = {
  */
 export type TrackedElement = Element | (() => Element | null);
 
+/**
+ * A plain rectangle in viewport coordinates. Structurally compatible with
+ * {@link DOMRect}, so `getBoundingClientRect()` results can be used directly.
+ */
+export type RectValues = {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+};
+
+/**
+ * A preview item tracked by {@link setAndTrackPreviewElements}.
+ */
+export type TrackedElementItem = {
+    /**
+     * The url for the preview item. Must be valid.
+     *
+     * File urls should begin with `file://`
+     */
+    url: string;
+    /** The element (or element resolver) this item's source frame tracks. */
+    element: TrackedElement;
+    /**
+     * Optional override for the rectangle used as the item's source frame.
+     * When provided, it is called with the currently resolved element on every
+     * tracking update instead of `element.getBoundingClientRect()`, and must
+     * return viewport-relative coordinates (a `DOMRect` or plain equivalent).
+     *
+     * Use this to target a subset of the element — e.g. the actual drawn
+     * region of an `object-fit: contain` image rather than its full box.
+     */
+    getRect?: (element: Element) => RectValues;
+};
+
 export type SetAndTrackPreviewElementsOptions = {
     /**
      * When `true` (the default), each tracked element is watched with an

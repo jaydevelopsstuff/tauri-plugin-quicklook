@@ -3,9 +3,11 @@ import { getCurrentWindow, Monitor, Window } from "@tauri-apps/api/window";
 import { rectsEqual } from "./utils";
 import {
     PreviewItem,
+    RectValues,
     SetAndTrackPreviewElementsOptions,
     SourceFrame,
     TrackedElement,
+    TrackedElementItem,
 } from "./types";
 
 /**
@@ -33,12 +35,14 @@ import {
  * scroll or resize the window while the preview pane is open. If you don't need this level of
  * dynamic coverage you can just use {@link setPreviewItems}.
  *
- * @param elementItems The elements (or element resolvers) to track/update and their URLs
+ * @param elementItems The elements (or element resolvers) to track/update and their URLs.
+ * Each item can also provide a `getRect` override to track a sub-rectangle of its
+ * element (see {@link TrackedElementItem}).
  * @param options See {@link SetAndTrackPreviewElementsOptions}
  * @returns Cleanup callback that stops all tracking
  */
 export async function setAndTrackPreviewElements(
-    elementItems: { url: string; element: TrackedElement }[],
+    elementItems: TrackedElementItem[],
     options: SetAndTrackPreviewElementsOptions = {},
 ): Promise<() => void> {
     const { clearFrameWhenHidden = true } = options;
@@ -47,14 +51,16 @@ export async function setAndTrackPreviewElements(
     type TrackedItemState = {
         url: string;
         source: TrackedElement;
+        getRect?: (element: Element) => RectValues;
         element: Element | null;
         visible: boolean;
-        lastRect: DOMRect | null;
+        lastRect: RectValues | null;
     };
 
     const states: TrackedItemState[] = elementItems.map((item) => ({
         url: item.url,
         source: item.element,
+        getRect: item.getRect,
         element: null,
         visible: true,
         lastRect: null,
@@ -144,7 +150,9 @@ export async function setAndTrackPreviewElements(
 
         const rects = states.map((state) =>
             state.element && state.visible
-                ? state.element.getBoundingClientRect()
+                ? state.getRect
+                    ? state.getRect(state.element)
+                    : state.element.getBoundingClientRect()
                 : null,
         );
         // The initial push must always happen so the items themselves get set,

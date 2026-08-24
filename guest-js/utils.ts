@@ -1,9 +1,4 @@
-export type RectValues = {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-};
+import { RectValues } from "./types";
 
 export function rectsEqual(
     a: RectValues | null,
