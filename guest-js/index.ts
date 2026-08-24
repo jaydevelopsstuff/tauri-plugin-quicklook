@@ -169,6 +169,7 @@ export async function setAndTrackPreviewElements(
 
         const items: PreviewItem[] = states.map((state, i) => {
             const rect = rects[i];
+            state.lastRect = rect;
             return {
                 url: state.url,
                 srcFrame: rect
@@ -187,13 +188,8 @@ export async function setAndTrackPreviewElements(
             };
         });
 
-        await setPreviewItems(items);
-        // Only commit what was delivered: a failed push must stay "changed" so
-        // the next sync retries it instead of believing the frames landed
         hasPushed = true;
-        states.forEach((state, i) => {
-            state.lastRect = rects[i];
-        });
+        await setPreviewItems(items);
         // We don't need to reload the preview pane since only the source frames are changed
     }
 
