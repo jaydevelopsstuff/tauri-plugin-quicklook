@@ -1,63 +1,208 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow, Monitor, Window } from "@tauri-apps/api/window";
-import { observeElementRect } from "./utils";
-import { PreviewItem, SourceFrame } from "./types";
+import { rectsEqual } from "./utils";
+import {
+    PreviewItem,
+    SetAndTrackPreviewElementsOptions,
+    SourceFrame,
+    TrackedElement,
+} from "./types";
 
 /**
- * Takes an input list of preview item URLs and the elements that represent them and
- * creates listeners to track changes in their position/size, track user scroll anywhere
- * in the viewport, and changes in the size of the window—refetching the bounding rect of
- * elements when (a) listener(s) fires and updating the source frames of preview items to
- * reflect the change.
+ * Takes an input list of preview item URLs and the elements that represent them
+ * (or resolver functions that locate them, see {@link TrackedElement}) and keeps
+ * the preview items' source frames in sync with the elements' on-screen positions.
+ * Position/size changes, scrolling anywhere in the viewport, and window resizes are
+ * all tracked; updates are coalesced into at most one `setPreviewItems` push per
+ * animation frame, and pushes are skipped entirely when nothing has moved.
+ *
+ * An item's source frame is cleared (making the preview pane fall back to its fade
+ * animation for that item) whenever its element is unavailable: the resolver returned
+ * `null`, the element was removed from the DOM, or—unless
+ * {@link SetAndTrackPreviewElementsOptions.clearFrameWhenHidden} is disabled—the
+ * element is scrolled fully offscreen or clipped away by a scroll container. When the
+ * element becomes available again (e.g. a virtualized row remounts and its resolver
+ * returns the new node), its source frame is restored and tracking resumes.
+ *
+ * The set of items (URLs and order) is fixed for the lifetime of the call. To change
+ * it, call the returned cleanup function and invoke this again with the new list—and
+ * since the URLs/order changed, follow with {@link reloadPreviewPane}. Source frame
+ * updates alone never require a reload.
  *
  * This is a catch-all use case when your preview items might move around and/or the user might
  * scroll or resize the window while the preview pane is open. If you don't need this level of
  * dynamic coverage you can just use {@link setPreviewItems}.
  *
- * @param elementItems The elements to track/update and their URLs
- * @returns Unlistener callback
+ * @param elementItems The elements (or element resolvers) to track/update and their URLs
+ * @param options See {@link SetAndTrackPreviewElementsOptions}
+ * @returns Cleanup callback that stops all tracking
  */
 export async function setAndTrackPreviewElements(
-    elementItems: { url: string; element: Element }[],
-) {
-    async function syncPreviewItems() {
-        const items = await Promise.all(
-            elementItems.map(async (item) => ({
-                url: item.url,
-                srcFrame: await domRectToWindowSourceFrame(
-                    getCurrentWindow(),
-                    item.element.getBoundingClientRect(),
-                ),
-            })),
-        );
-        await setPreviewItems(items);
-        // We don't need to reload the preview pane since only the source frames are changed
-        return items;
+    elementItems: { url: string; element: TrackedElement }[],
+    options: SetAndTrackPreviewElementsOptions = {},
+): Promise<() => void> {
+    const { clearFrameWhenHidden = true } = options;
+    const appWindow = getCurrentWindow();
+
+    type TrackedItemState = {
+        url: string;
+        source: TrackedElement;
+        element: Element | null;
+        visible: boolean;
+        lastRect: DOMRect | null;
+    };
+
+    const states: TrackedItemState[] = elementItems.map((item) => ({
+        url: item.url,
+        source: item.element,
+        element: null,
+        visible: true,
+        lastRect: null,
+    }));
+
+    let scheduled = false;
+    let rafId = 0;
+    let syncing = false;
+    let resyncNeeded = false;
+    let forceFramePush = false;
+    let hasPushed = false;
+    let stopped = false;
+
+    const resizeObserver = new ResizeObserver(schedule);
+    const intersectionObserver = clearFrameWhenHidden
+        ? new IntersectionObserver((entries) => {
+              for (const entry of entries) {
+                  for (const state of states) {
+                      if (state.element === entry.target) {
+                          state.visible = entry.isIntersecting;
+                      }
+                  }
+              }
+              schedule();
+          })
+        : null;
+
+    // A single observer over the whole body catches position shifts that fire no
+    // event on the element itself (e.g. a sibling mounting above it)
+    const mutationObserver = new MutationObserver(schedule);
+    mutationObserver.observe(document.body, {
+        attributes: true,
+        childList: true,
+        subtree: true,
+        characterData: false,
+    });
+
+    function resolveElement(state: TrackedItemState) {
+        const resolved =
+            typeof state.source === "function" ? state.source() : state.source;
+        const next = resolved?.isConnected ? resolved : null;
+
+        if (next === state.element) return;
+
+        if (state.element) {
+            resizeObserver.unobserve(state.element);
+            intersectionObserver?.unobserve(state.element);
+        }
+        if (next) {
+            resizeObserver.observe(next);
+            intersectionObserver?.observe(next);
+            // Assume visible until the IntersectionObserver reports otherwise
+            state.visible = true;
+        }
+        state.element = next;
     }
 
-    const previousPreviewItems = await syncPreviewItems();
+    function schedule() {
+        if (scheduled || stopped) return;
+        scheduled = true;
+        rafId = requestAnimationFrame(() => {
+            scheduled = false;
+            void sync();
+        });
+    }
 
-    const resizeUnlisten = await getCurrentWindow().listen(
-        "tauri://resize",
-        syncPreviewItems,
-    );
-    window.addEventListener("scroll", syncPreviewItems, true);
+    async function sync() {
+        if (syncing) {
+            resyncNeeded = true;
+            return;
+        }
+        syncing = true;
+        try {
+            do {
+                resyncNeeded = false;
+                await pushItemsIfChanged();
+            } while (resyncNeeded && !stopped);
+        } finally {
+            syncing = false;
+        }
+    }
 
-    const observorCleanups = elementItems.map((item, i) =>
-        observeElementRect(item.element, async () => {
-            previousPreviewItems[i].srcFrame = await domRectToWindowSourceFrame(
-                getCurrentWindow(),
-                item.element.getBoundingClientRect(),
-            );
-            await setPreviewItems(previousPreviewItems);
-            // We don't need to reload the preview pane since only the source frame is changed
-        }),
-    );
+    async function pushItemsIfChanged() {
+        if (stopped) return;
+
+        for (const state of states) resolveElement(state);
+
+        const rects = states.map((state) =>
+            state.element && state.visible
+                ? state.element.getBoundingClientRect()
+                : null,
+        );
+        // The initial push must always happen so the items themselves get set,
+        // even if no element has resolved yet
+        const changed =
+            !hasPushed ||
+            forceFramePush ||
+            states.some((state, i) => !rectsEqual(rects[i], state.lastRect));
+        if (!changed) return;
+        forceFramePush = false;
+
+        const scaleFactor = await appWindow.scaleFactor();
+        const windowSize = (await appWindow.innerSize()).toLogical(scaleFactor);
+
+        const items: PreviewItem[] = states.map((state, i) => {
+            const rect = rects[i];
+            state.lastRect = rect;
+            return {
+                url: state.url,
+                srcFrame: rect
+                    ? {
+                          Window: {
+                              windowLabel: appWindow.label,
+                              rect: {
+                                  x: rect.x,
+                                  y: windowSize.height - (rect.y + rect.height),
+                                  width: rect.width,
+                                  height: rect.height,
+                              },
+                          },
+                      }
+                    : undefined,
+            };
+        });
+
+        hasPushed = true;
+        await setPreviewItems(items);
+        // We don't need to reload the preview pane since only the source frames are changed
+    }
+
+    window.addEventListener("scroll", schedule, true);
+    const resizeUnlisten = await appWindow.listen("tauri://resize", () => {
+        // A window resize shifts the AppKit-coordinate frames even when the
+        // viewport rects are unchanged, so the next push can't be skipped
+        forceFramePush = true;
+        schedule();
+    });
+
+    await sync();
 
     return () => {
+        stopped = true;
+        if (scheduled) cancelAnimationFrame(rafId);
         resizeUnlisten();
-        window.removeEventListener("scroll", syncPreviewItems);
-        observorCleanups.forEach((c) => c());
+        window.removeEventListener("scroll", schedule, true);
+        mutationObserver.disconnect();
+        resizeObserver.disconnect();
+        intersectionObserver?.disconnect();
     };
 }
 

@@ -45,6 +45,9 @@
                             element: document.getElementById(`img:${path}`)!,
                         })),
                     ),
+                    {
+                        clearFrameWhenHidden: true,
+                    },
                 )),
         );
 
