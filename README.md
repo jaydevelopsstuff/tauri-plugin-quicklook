@@ -5,7 +5,7 @@ This plugin provides APIs to display and manage the macOS
 
 https://github.com/user-attachments/assets/4a3ff67c-bec4-40d9-b8be-ffada33630e4
 
-`tauri-plugin-quicklook` being used in production to power [Cosmil](https://cosmil.app), a macOS file manager built with Tauri.
+`tauri-plugin-quicklook` being used in production to power [Cosmil](https://cosmil.app?utm_source=github&utm_medium=lib-readme), a macOS file manager built with Tauri.
 
 ---
 
