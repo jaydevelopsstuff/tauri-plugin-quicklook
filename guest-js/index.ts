@@ -374,4 +374,18 @@ export async function togglePreviewPane() {
     await invoke("plugin:quicklook|toggle_preview_pane");
 }
 
+/**
+ * Whether the preview pane is on screen right now.
+ *
+ * Worth asking rather than remembering: the pane is a panel the window server
+ * owns, and it can go away without the webview being told — so a flag kept on
+ * this side drifts, while this does not.
+ *
+ * @see {@link showPreviewPane}
+ * @see {@link hidePreviewPane}
+ */
+export async function previewPaneVisible(): Promise<boolean> {
+    return await invoke("plugin:quicklook|preview_pane_visible");
+}
+
 export * from "./types";

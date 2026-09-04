@@ -42,3 +42,8 @@ pub(crate) fn hide_preview_pane<R: Runtime>(app: AppHandle<R>) -> Result<()> {
 pub(crate) fn toggle_preview_pane<R: Runtime>(app: AppHandle<R>) -> Result<()> {
     app.quicklook().queue_toggle_visible()
 }
+
+#[command(async)]
+pub(crate) fn preview_pane_visible<R: Runtime>(app: AppHandle<R>) -> Result<bool> {
+    app.quicklook().preview_pane_visible()
+}

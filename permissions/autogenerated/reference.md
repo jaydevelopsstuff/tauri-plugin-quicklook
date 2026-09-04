@@ -44,6 +44,32 @@ Denies the hide_preview_pane command without any pre-configured scope.
 <tr>
 <td>
 
+`quicklook:allow-preview-pane-visible`
+
+</td>
+<td>
+
+Enables the preview_pane_visible command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`quicklook:deny-preview-pane-visible`
+
+</td>
+<td>
+
+Denies the preview_pane_visible command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `quicklook:allow-set-preview-items`
 
 </td>
@@ -153,7 +179,7 @@ Denies the toggle_preview_pane command without any pre-configured scope.
 </td>
 <td>
 
-Enable showing and hiding the preview pane as well as setting preview pane items.
+Enable showing, hiding and querying the preview pane as well as setting preview pane items.
 
 </td>
 </tr>

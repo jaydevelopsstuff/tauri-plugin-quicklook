@@ -44,7 +44,8 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             commands::reload_preview_pane,
             commands::show_preview_pane,
             commands::hide_preview_pane,
-            commands::toggle_preview_pane
+            commands::toggle_preview_pane,
+            commands::preview_pane_visible
         ])
         .setup(|app, api| {
             let panel = QuickLookPanel::shared().unwrap();

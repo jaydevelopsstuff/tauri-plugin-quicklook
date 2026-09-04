@@ -307,6 +307,18 @@
           "markdownDescription": "Denies the hide_preview_pane command without any pre-configured scope."
         },
         {
+          "description": "Enables the preview_pane_visible command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-preview-pane-visible",
+          "markdownDescription": "Enables the preview_pane_visible command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the preview_pane_visible command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-preview-pane-visible",
+          "markdownDescription": "Denies the preview_pane_visible command without any pre-configured scope."
+        },
+        {
           "description": "Enables the set_preview_items command without any pre-configured scope.",
           "type": "string",
           "const": "allow-set-preview-items",
@@ -361,10 +373,10 @@
           "markdownDescription": "Default permissions for the plugin\n#### This default permission set includes:\n\n- `preview-pane`"
         },
         {
-          "description": "Enable showing and hiding the preview pane as well as setting preview pane items.",
+          "description": "Enable showing, hiding and querying the preview pane as well as setting preview pane items.",
           "type": "string",
           "const": "preview-pane",
-          "markdownDescription": "Enable showing and hiding the preview pane as well as setting preview pane items."
+          "markdownDescription": "Enable showing, hiding and querying the preview pane as well as setting preview pane items."
         }
       ]
     }

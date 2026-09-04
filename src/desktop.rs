@@ -116,6 +116,31 @@ impl<R: Runtime> Quicklook<R> {
         Ok(())
     }
 
+    /// Whether the preview panel is on screen right now.
+    ///
+    /// Unlike the queued operations above this has to answer, so it dispatches
+    /// to the main thread and waits for the reply — AppKit will not be asked
+    /// about a window from anywhere else. **Never call it *from* the main thread**:
+    /// the work it is waiting on is queued behind the caller. Tauri's commands
+    /// run on a worker, which is what makes [`commands::preview_pane_visible`]
+    /// safe.
+    pub fn preview_pane_visible(&self) -> Result<bool> {
+        let (answer, wait) = std::sync::mpsc::sync_channel(1);
+
+        self.app_handle
+            .run_on_main_thread(move || {
+                PANEL.with(|p| {
+                    let _ = answer.send(p.get().unwrap().is_visible());
+                });
+            })
+            .map_err(|_| Error::MainThreadDispatchFailed)?;
+
+        // The sender lives in the closure, so a dispatch dropped without ever
+        // running — the app tearing down — closes the channel rather than
+        // leaving this blocked on a reply that is never coming.
+        wait.recv().map_err(|_| Error::MainThreadDispatchFailed)
+    }
+
     /// Queues the preview pane to be hidden if its currently
     /// visible, and vice versa if its currently shown.
     pub fn queue_toggle_visible(&self) -> Result<()> {

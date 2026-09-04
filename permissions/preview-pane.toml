@@ -1,11 +1,12 @@
 [[permission]]
 identifier = "preview-pane"
-description = "Enable showing and hiding the preview pane as well as setting preview pane items."
+description = "Enable showing, hiding and querying the preview pane as well as setting preview pane items."
 commands.allow = [
     "set_preview_items",
     "set_preview_items_and_show",
     "show_preview_pane",
     "hide_preview_pane",
     "toggle_preview_pane",
-    "reload_preview_pane"
+    "reload_preview_pane",
+    "preview_pane_visible"
 ]

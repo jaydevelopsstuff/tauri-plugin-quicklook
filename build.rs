@@ -4,6 +4,7 @@ const COMMANDS: &[&str] = &[
     "show_preview_pane",
     "hide_preview_pane",
     "toggle_preview_pane",
+    "preview_pane_visible",
 ];
 
 fn main() {
